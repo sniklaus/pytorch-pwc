@@ -4,6 +4,7 @@ This is a personal reimplementation of PWC-Net [1] using PyTorch. Should you be 
 <a href="https://arxiv.org/abs/1709.02371" rel="Paper"><img src="http://www.arxiv-sanity.com/static/thumbs/1709.02371v1.pdf.jpg" alt="Paper" width="100%"></a>
 
 For the original version of this work, please see: https://github.com/NVlabs/PWC-Net
+<br />
 Another optical flow implementation from me: https://github.com/sniklaus/pytorch-spynet
 
 ## background
