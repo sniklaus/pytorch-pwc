@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python
 
 import getopt
 import math
@@ -313,16 +313,18 @@ def estimate(tensorInputFirst, tensorInputSecond):
 		tensorPreprocessedFirst = tensorInputFirst.view(1, 3, intHeight, intWidth)
 		tensorPreprocessedSecond = tensorInputSecond.view(1, 3, intHeight, intWidth)
 
-		intWidth = int(math.floor(math.ceil(intWidth / 64.0) * 64.0))
-		intHeight = int(math.floor(math.ceil(intHeight / 64.0) * 64.0))
+		intPreprocessedWidth = int(math.floor(math.ceil(intWidth / 64.0) * 64.0))
+		intPreprocessedHeight = int(math.floor(math.ceil(intHeight / 64.0) * 64.0))
 
-		tensorPreprocessedFirst = torch.nn.functional.upsample(input=tensorPreprocessedFirst, size=(intHeight, intWidth), mode='bilinear', align_corners=False)
-		tensorPreprocessedSecond = torch.nn.functional.upsample(input=tensorPreprocessedSecond, size=(intHeight, intWidth), mode='bilinear', align_corners=False)
+		tensorPreprocessedFirst = torch.nn.functional.upsample(input=tensorPreprocessedFirst, size=(intPreprocessedHeight, intPreprocessedWidth), mode='bilinear', align_corners=False)
+		tensorPreprocessedSecond = torch.nn.functional.upsample(input=tensorPreprocessedSecond, size=(intPreprocessedHeight, intPreprocessedWidth), mode='bilinear', align_corners=False)
 
-		intWidth = tensorInputFirst.size(2)
-		intHeight = tensorInputFirst.size(1)
+		tensorFlow = 20.0 * torch.nn.functional.upsample(input=moduleNetwork(tensorPreprocessedFirst, tensorPreprocessedSecond), size=(intHeight, intWidth), mode='bilinear', align_corners=False)
 
-		tensorOutput.resize_(2, intHeight, intWidth).copy_(20.0 * torch.nn.functional.upsample(input=moduleNetwork(tensorPreprocessedFirst, tensorPreprocessedSecond), size=(intHeight, intWidth), mode='bilinear', align_corners=False)[0, :, :, :])
+		tensorFlow[:, 0, :, :] *= float(intWidth) / float(intPreprocessedWidth)
+		tensorFlow[:, 1, :, :] *= float(intHeight) / float(intPreprocessedHeight)
+
+		tensorOutput.resize_(2, intHeight, intWidth).copy_(tensorFlow[0, :, :, :])
 	# end
 
 	if True:
