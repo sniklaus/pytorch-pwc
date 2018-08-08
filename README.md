@@ -23,7 +23,7 @@ python run.py --model sintel --first ./images/first.png --second ./images/second
 I am afraid that I cannot guarantee that this reimplementation is correct. However, it produced results identical to the Caffe implementation of the original authors in the examples that I tried. Please feel free to contribute to this repository by submitting issues and pull requests.
 
 ## comparison
-<p align="center"><img src="comparison/comparison.gif?raw=truef" alt="Comparison"></p>
+<p align="center"><img src="comparison/comparison.gif?raw=true" alt="Comparison"></p>
 
 ## license
 As stated in the <a href="https://github.com/NVlabs/PWC-Net#license">licensing terms</a> of the authors of the paper, the models are free for non-commercial share-alike purpose. Please make sure to further consult their licensing terms.

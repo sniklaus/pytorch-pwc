@@ -134,10 +134,10 @@ class Network(torch.nn.Module):
 				# end
 
 				if hasattr(self, 'tensorGrid') == False or self.tensorGrid.size(0) != tensorFlow.size(0) or self.tensorGrid.size(2) != tensorFlow.size(2) or self.tensorGrid.size(3) != tensorFlow.size(3):
-					torchHorizontal = torch.linspace(-1.0, 1.0, tensorFlow.size(3)).view(1, 1, 1, tensorFlow.size(3)).expand(tensorFlow.size(0), 1, tensorFlow.size(2), tensorFlow.size(3))
-					torchVertical = torch.linspace(-1.0, 1.0, tensorFlow.size(2)).view(1, 1, tensorFlow.size(2), 1).expand(tensorFlow.size(0), 1, tensorFlow.size(2), tensorFlow.size(3))
+					tensorHorizontal = torch.linspace(-1.0, 1.0, tensorFlow.size(3)).view(1, 1, 1, tensorFlow.size(3)).expand(tensorFlow.size(0), -1, tensorFlow.size(2), -1)
+					tensorVertical = torch.linspace(-1.0, 1.0, tensorFlow.size(2)).view(1, 1, tensorFlow.size(2), 1).expand(tensorFlow.size(0), -1, -1, tensorFlow.size(3))
 
-					self.tensorGrid = torch.cat([ torchHorizontal, torchVertical ], 1).cuda()
+					self.tensorGrid = torch.cat([ tensorHorizontal, tensorVertical ], 1).cuda()
 				# end
 
 				tensorInput = torch.cat([ tensorInput, self.tensorPartial ], 1)

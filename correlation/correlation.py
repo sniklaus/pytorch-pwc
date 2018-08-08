@@ -1,5 +1,6 @@
 import cupy
 import torch
+import re
 
 kernel_Correlation_rearrange = '''
 	extern "C" __global__ void kernel_Correlation_rearrange(
@@ -101,11 +102,36 @@ kernel_Correlation_updateOutput = '''
 def cupy_kernel(strFunction, objectVariables):
 	strKernel = globals()[strFunction]
 
-	for strVariable in objectVariables:
-		strKernel = strKernel.replace('SIZE_0(' + strVariable + ')', str(objectVariables[strVariable].size(0)))
-		strKernel = strKernel.replace('SIZE_1(' + strVariable + ')', str(objectVariables[strVariable].size(1)))
-		strKernel = strKernel.replace('SIZE_2(' + strVariable + ')', str(objectVariables[strVariable].size(2)))
-		strKernel = strKernel.replace('SIZE_3(' + strVariable + ')', str(objectVariables[strVariable].size(3)))
+	while True:
+		objectMatch = re.search('(SIZE_)([0-4])(\()([^\)]*)(\))', strKernel)
+
+		if objectMatch is None:
+			break
+		# end
+
+		intArg = int(objectMatch.group(2))
+
+		strTensor = objectMatch.group(4)
+		intSizes = objectVariables[strTensor].size()
+
+		strKernel = strKernel.replace(objectMatch.group(), str(intSizes[intArg]))
+	# end
+
+	while True:
+		objectMatch = re.search('(VALUE_)([0-4])(\()([^\)]+)(\))', strKernel)
+
+		if objectMatch is None:
+			break
+		# end
+
+		intArgs = int(objectMatch.group(2))
+		strArgs = objectMatch.group(4).split(',')
+
+		strTensor = strArgs[0]
+		intStrides = objectVariables[strTensor].stride()
+		strIndex = [ '((' + strArgs[intArg + 1].replace('{', '(').replace('}', ')').strip() + ')*' + str(intStrides[intArg]) + ')' for intArg in range(intArgs) ]
+
+		strKernel = strKernel.replace(objectMatch.group(0), strTensor + '[' + str.join('+', strIndex) + ']')
 	# end
 
 	return strKernel
