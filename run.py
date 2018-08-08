@@ -10,7 +10,11 @@ import sys
 import torch
 import torch.utils.serialization
 
-from correlation import correlation # the custom cost volume layer
+try:
+	from correlation import correlation # the custom cost volume layer
+except:
+	sys.path.insert(0, './correlation'); import correlation # you should consider upgrading python
+# end
 
 ##########################################################
 
