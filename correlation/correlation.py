@@ -153,10 +153,10 @@ class FunctionCorrelation(torch.autograd.Function):
 		assert(first.is_contiguous() == True)
 		assert(second.is_contiguous() == True)
 
-		self.rbot0 = first.new(first.size(0), first.size(2) + 8, first.size(3) + 8, first.size(1)).zero_()
-		self.rbot1 = first.new(first.size(0), first.size(2) + 8, first.size(3) + 8, first.size(1)).zero_()
+		self.rbot0 = first.new_zeros(first.size(0), first.size(2) + 8, first.size(3) + 8, first.size(1))
+		self.rbot1 = first.new_zeros(first.size(0), first.size(2) + 8, first.size(3) + 8, first.size(1))
 
-		output = first.new(first.size(0), 81, first.size(2), first.size(3)).zero_()
+		output = first.new_zeros(first.size(0), 81, first.size(2), first.size(3))
 
 		if first.is_cuda == True:
 			class Stream:
@@ -211,8 +211,8 @@ class FunctionCorrelation(torch.autograd.Function):
 
 		assert(gradOutput.is_contiguous() == True)
 
-		gradFirst = first.new(first.size()).zero_() if self.needs_input_grad[0] == True else None
-		gradSecond = first.new(first.size()).zero_() if self.needs_input_grad[1] == True else None
+		gradFirst = first.new_zeros(first.size(0), first.size(1), first.size(2), first.size(3)) if self.needs_input_grad[0] == True else None
+		gradSecond = first.new_zeros(first.size(0), first.size(1), first.size(2), first.size(3)) if self.needs_input_grad[1] == True else None
 
 		if first.is_cuda == True:
 			raise NotImplementedError()
