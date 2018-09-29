@@ -1,1 +1,1 @@
-The used example originates from the MPI Sintel Dataset: http://sintel.is.tue.mpg.de/
+The used example originates from the MPI Sintel dataset: http://sintel.is.tue.mpg.de/

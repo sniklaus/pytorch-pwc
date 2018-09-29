@@ -31,11 +31,11 @@ torch.backends.cudnn.enabled = True # make sure to use cudnn for computational p
 arguments_strModel = 'sintel'
 arguments_strFirst = './images/first.png'
 arguments_strSecond = './images/second.png'
-arguments_strOut = './result.flo'
+arguments_strOut = './out.flo'
 
 for strOption, strArgument in getopt.getopt(sys.argv[1:], '', [ strParameter[2:] + '=' for strParameter in sys.argv[1::2] ])[0]:
 	if strOption == '--model':
-		arguments_strModel = strArgument # which model to use, see below
+		arguments_strModel = strArgument # which model to use
 
 	elif strOption == '--first':
 		arguments_strFirst = strArgument # path to the first frame
