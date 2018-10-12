@@ -17,7 +17,7 @@ The correlation layer is implemented in CUDA using CuPy, which is why CuPy is a 
 To run it on your own pair of images, use the following command. You can choose between two models, please make sure to see their paper / the code for more details.
 
 ```
-python run.py --model sintel --first ./images/first.png --second ./images/second.png --out ./out.flo
+python run.py --model default --first ./images/first.png --second ./images/second.png --out ./out.flo
 ```
 
 I am afraid that I cannot guarantee that this reimplementation is correct. However, it produced results identical to the Caffe implementation of the original authors in the examples that I tried. Please feel free to contribute to this repository by submitting issues and pull requests.

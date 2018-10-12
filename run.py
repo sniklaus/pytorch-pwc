@@ -28,7 +28,7 @@ torch.backends.cudnn.enabled = True # make sure to use cudnn for computational p
 
 ##########################################################
 
-arguments_strModel = 'sintel'
+arguments_strModel = 'default'
 arguments_strFirst = './images/first.png'
 arguments_strSecond = './images/second.png'
 arguments_strOut = './out.flo'
