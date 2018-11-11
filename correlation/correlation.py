@@ -1,6 +1,11 @@
-import cupy
 import torch
+
+import cupy
 import re
+
+class Stream:
+	ptr = torch.cuda.current_stream().cuda_stream
+# end
 
 kernel_Correlation_rearrange = '''
 	extern "C" __global__ void kernel_Correlation_rearrange(
@@ -289,10 +294,6 @@ class FunctionCorrelation(torch.autograd.Function):
 		output = first.new_zeros(first.size(0), 81, first.size(2), first.size(3))
 
 		if first.is_cuda == True:
-			class Stream:
-				ptr = torch.cuda.current_stream().cuda_stream
-			# end
-
 			n = first.size(2) * first.size(3)
 			cupy_launch('kernel_Correlation_rearrange', cupy_kernel('kernel_Correlation_rearrange', {
 				'input': first,
@@ -345,10 +346,6 @@ class FunctionCorrelation(torch.autograd.Function):
 		gradSecond = first.new_zeros(first.size(0), first.size(1), first.size(2), first.size(3)) if self.needs_input_grad[1] == True else None
 
 		if first.is_cuda == True:
-			class Stream:
-				ptr = torch.cuda.current_stream().cuda_stream
-			# end
-
 			if gradFirst is not None:
 				for intSample in range(first.size(0)):
 					n = first.size(1) * first.size(2) * first.size(3)
