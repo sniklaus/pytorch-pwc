@@ -265,7 +265,7 @@ class Network(torch.nn.Module):
 
 		self.moduleRefiner = Refiner()
 
-		self.load_state_dict(torch.load('./models/' + arguments_strModel + '.pytorch'))
+		self.load_state_dict(torch.load('./network-' + arguments_strModel + '.pytorch'))
 	# end
 
 	def forward(self, tensorFirst, tensorSecond):

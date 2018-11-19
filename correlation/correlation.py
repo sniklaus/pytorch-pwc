@@ -104,10 +104,10 @@ kernel_Correlation_updateOutput = '''
 	}
 '''
 
-kernel_SpatialConvolve_updateGradFirst = '''
+kernel_Correlation_updateGradFirst = '''
 	#define ROUND_OFF 50000
 
-	extern "C" __global__ void kernel_SpatialConvolve_updateGradFirst(
+	extern "C" __global__ void kernel_Correlation_updateGradFirst(
 	  const int n,
 	  const int intSample,
 	  const float* rbot0,
@@ -168,10 +168,10 @@ kernel_SpatialConvolve_updateGradFirst = '''
 	} }
 '''
 
-kernel_SpatialConvolve_updateGradSecond = '''
+kernel_Correlation_updateGradSecond = '''
 	#define ROUND_OFF 50000
 
-	extern "C" __global__ void kernel_SpatialConvolve_updateGradSecond(
+	extern "C" __global__ void kernel_Correlation_updateGradSecond(
 	  const int n,
 	  const int intSample,
 	  const float* rbot0,
@@ -349,7 +349,7 @@ class FunctionCorrelation(torch.autograd.Function):
 			if gradFirst is not None:
 				for intSample in range(first.size(0)):
 					n = first.size(1) * first.size(2) * first.size(3)
-					cupy_launch('kernel_SpatialConvolve_updateGradFirst', cupy_kernel('kernel_SpatialConvolve_updateGradFirst', {
+					cupy_launch('kernel_Correlation_updateGradFirst', cupy_kernel('kernel_Correlation_updateGradFirst', {
 						'rbot0': self.rbot0,
 						'rbot1': self.rbot1,
 						'gradOutput': gradOutput,
@@ -367,7 +367,7 @@ class FunctionCorrelation(torch.autograd.Function):
 			if gradSecond is not None:
 				for intSample in range(first.size(0)):
 					n = first.size(1) * first.size(2) * first.size(3)
-					cupy_launch('kernel_SpatialConvolve_updateGradSecond', cupy_kernel('kernel_SpatialConvolve_updateGradSecond', {
+					cupy_launch('kernel_Correlation_updateGradSecond', cupy_kernel('kernel_Correlation_updateGradSecond', {
 						'rbot0': self.rbot0,
 						'rbot1': self.rbot1,
 						'gradOutput': gradOutput,

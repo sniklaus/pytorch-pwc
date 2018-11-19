@@ -5,12 +5,18 @@ This is a personal reimplementation of PWC-Net [1] using PyTorch. Should you be 
 
 For the original version of this work, please see: https://github.com/NVlabs/PWC-Net
 <br />
-Another optical flow implementation from me: https://github.com/sniklaus/pytorch-spynet
+Another optical flow implementation from me: https://github.com/sniklaus/pytorch-unflow
+<br />
+And another optical flow implementation from me: https://github.com/sniklaus/pytorch-spynet
 
 ## background
-The authors of PWC-Net are thankfully already providing a reference implementation in PyTorch. However, it performs worse than their original Caffe version. To address this issue, the implementation in this repository replicates the official Caffe version and does thus not have the shortcomings of the official PyTorch implementation.
+The authors of PWC-Net are thankfully already providing a reference implementation in PyTorch. However, its initial version did not reach the performance of the original Caffe version. This is why I created this repositroy, in which I replicated the performance of the official Caffe version by utilizing its weights.
+
+The official PyTorch implementation has adopted my approach of using the Caffe weights since then, which is why they are all performing equally well now. Many people have reported issues with CUDA when trying to get the official PyTorch version to run though, while my reimplementaiton does not seem to be subject to such problems.
 
 ## setup
+To download the pre-trained models, run `bash download.bash`. These originate from the original authors, I just converted them to PyTorch.
+
 The correlation layer is implemented in CUDA using CuPy, which is why CuPy is a required dependency. It can be installed using `pip install cupy` or alternatively using one of the provided binary packages as outlined in the CuPy repository.
 
 ## usage

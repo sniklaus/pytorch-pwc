@@ -16,9 +16,6 @@ objectImages = [ {
 	'strFile': 'official - caffe.png',
 	'strText': 'official - Caffe'
 }, {
-	'strFile': 'official - pytorch.png',
-	'strText': 'official - PyTorch'
-}, {
 	'strFile': 'this - pytorch.png',
 	'strText': 'this - PyTorch'
 } ]
