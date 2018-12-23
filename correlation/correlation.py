@@ -277,11 +277,8 @@ def cupy_launch(strFunction, strKernel):
 	return cupy.cuda.compile_with_cache(strKernel).get_function(strFunction)
 # end
 
-class FunctionCorrelation(torch.autograd.Function):
-	def __init__(self):
-		super(FunctionCorrelation, self).__init__()
-	# end
-
+class _FunctionCorrelation(torch.autograd.Function):
+	@staticmethod
 	def forward(self, first, second):
 		self.save_for_backward(first, second)
 
@@ -337,6 +334,7 @@ class FunctionCorrelation(torch.autograd.Function):
 		return output
 	# end
 
+	@staticmethod
 	def backward(self, gradOutput):
 		first, second = self.saved_tensors
 
@@ -391,12 +389,16 @@ class FunctionCorrelation(torch.autograd.Function):
 	# end
 # end
 
+def FunctionCorrelation(tensorFirst, tensorSecond):
+	return _FunctionCorrelation.apply(tensorFirst, tensorSecond)
+# end
+
 class ModuleCorrelation(torch.nn.Module):
 	def __init__(self):
 		super(ModuleCorrelation, self).__init__()
 	# end
 
 	def forward(self, tensorFirst, tensorSecond):
-		return FunctionCorrelation()(tensorFirst, tensorSecond)
+		return _FunctionCorrelation.apply(tensorFirst, tensorSecond)
 	# end
 # end

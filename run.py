@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 import torch
-import torch.utils.serialization
 
 import getopt
 import math
@@ -19,7 +18,7 @@ except:
 
 ##########################################################
 
-assert(int(torch.__version__.replace('.', '')) >= 40) # requires at least pytorch version 0.4.0
+assert(int(str('').join(torch.__version__.split('.')[0:3])) >= 40) # requires at least pytorch version 0.4.0
 
 torch.set_grad_enabled(False) # make sure to not compute gradients for computational performance
 
@@ -39,6 +38,33 @@ for strOption, strArgument in getopt.getopt(sys.argv[1:], '', [ strParameter[2:]
 	if strOption == '--first' and strArgument != '': arguments_strFirst = strArgument # path to the first frame
 	if strOption == '--second' and strArgument != '': arguments_strSecond = strArgument # path to the second frame
 	if strOption == '--out' and strArgument != '': arguments_strOut = strArgument # path to where the output should be stored
+# end
+
+##########################################################
+
+Backward_tensorGrid = {}
+Backward_tensorPartial = {}
+
+def Backward(tensorInput, tensorFlow):
+	if str(tensorFlow.size()) not in Backward_tensorGrid:
+		tensorHorizontal = torch.linspace(-1.0, 1.0, tensorFlow.size(3)).view(1, 1, 1, tensorFlow.size(3)).expand(tensorFlow.size(0), -1, tensorFlow.size(2), -1)
+		tensorVertical = torch.linspace(-1.0, 1.0, tensorFlow.size(2)).view(1, 1, tensorFlow.size(2), 1).expand(tensorFlow.size(0), -1, -1, tensorFlow.size(3))
+
+		Backward_tensorGrid[str(tensorFlow.size())] = torch.cat([ tensorHorizontal, tensorVertical ], 1).cuda()
+	# end
+
+	if str(tensorFlow.size()) not in Backward_tensorPartial:
+		Backward_tensorPartial[str(tensorFlow.size())] = tensorFlow.new_ones([ tensorFlow.size(0), 1, tensorFlow.size(2), tensorFlow.size(3) ])
+	# end
+
+	tensorFlow = torch.cat([ tensorFlow[:, 0:1, :, :] / ((tensorInput.size(3) - 1.0) / 2.0), tensorFlow[:, 1:2, :, :] / ((tensorInput.size(2) - 1.0) / 2.0) ], 1)
+	tensorInput = torch.cat([ tensorInput, Backward_tensorPartial[str(tensorFlow.size())] ], 1)
+
+	tensorOutput = torch.nn.functional.grid_sample(input=tensorInput, grid=(Backward_tensorGrid[str(tensorFlow.size())] + tensorFlow).permute(0, 2, 3, 1), mode='bilinear', padding_mode='zeros')
+
+	tensorMask = tensorOutput[:, -1:, :, :]; tensorMask[tensorMask > 0.999] = 1.0; tensorMask[tensorMask < 1.0] = 0.0
+
+	return tensorOutput[:, :-1, :, :] * tensorMask
 # end
 
 ##########################################################
@@ -118,34 +144,6 @@ class Network(torch.nn.Module):
 			# end
 		# end
 
-		class Backward(torch.nn.Module):
-			def __init__(self):
-				super(Backward, self).__init__()
-			# end
-
-			def forward(self, tensorInput, tensorFlow):
-				if hasattr(self, 'tensorPartial') == False or self.tensorPartial.size(0) != tensorFlow.size(0) or self.tensorPartial.size(2) != tensorFlow.size(2) or self.tensorPartial.size(3) != tensorFlow.size(3):
-					self.tensorPartial = tensorFlow.new_ones([ tensorFlow.size(0), 1, tensorFlow.size(2), tensorFlow.size(3) ])
-				# end
-
-				if hasattr(self, 'tensorGrid') == False or self.tensorGrid.size(0) != tensorFlow.size(0) or self.tensorGrid.size(2) != tensorFlow.size(2) or self.tensorGrid.size(3) != tensorFlow.size(3):
-					tensorHorizontal = torch.linspace(-1.0, 1.0, tensorFlow.size(3)).view(1, 1, 1, tensorFlow.size(3)).expand(tensorFlow.size(0), -1, tensorFlow.size(2), -1)
-					tensorVertical = torch.linspace(-1.0, 1.0, tensorFlow.size(2)).view(1, 1, tensorFlow.size(2), 1).expand(tensorFlow.size(0), -1, -1, tensorFlow.size(3))
-
-					self.tensorGrid = torch.cat([ tensorHorizontal, tensorVertical ], 1).cuda()
-				# end
-
-				tensorInput = torch.cat([ tensorInput, self.tensorPartial ], 1)
-				tensorFlow = torch.cat([ tensorFlow[:, 0:1, :, :] / ((tensorInput.size(3) - 1.0) / 2.0), tensorFlow[:, 1:2, :, :] / ((tensorInput.size(2) - 1.0) / 2.0) ], 1)
-
-				tensorOutput = torch.nn.functional.grid_sample(input=tensorInput, grid=(self.tensorGrid + tensorFlow).permute(0, 2, 3, 1), mode='bilinear', padding_mode='zeros')
-
-				tensorMask = tensorOutput[:, -1:, :, :]; tensorMask[tensorMask > 0.999] = 1.0; tensorMask[tensorMask < 1.0] = 0.0
-
-				return tensorOutput[:, :-1, :, :] * tensorMask
-			# end
-		# end
-
 		class Decoder(torch.nn.Module):
 			def __init__(self, intLevel):
 				super(Decoder, self).__init__()
@@ -155,12 +153,7 @@ class Network(torch.nn.Module):
 
 				if intLevel < 6: self.moduleUpflow = torch.nn.ConvTranspose2d(in_channels=2, out_channels=2, kernel_size=4, stride=2, padding=1)
 				if intLevel < 6: self.moduleUpfeat = torch.nn.ConvTranspose2d(in_channels=intPrevious + 128 + 128 + 96 + 64 + 32, out_channels=2, kernel_size=4, stride=2, padding=1)
-
 				if intLevel < 6: self.dblBackward = [ None, None, None, 5.0, 2.5, 1.25, 0.625, None ][intLevel + 1]
-				if intLevel < 6: self.moduleBackward = Backward()
-
-				self.moduleCorrelation = correlation.ModuleCorrelation()
-				self.moduleCorreleaky = torch.nn.LeakyReLU(inplace=False, negative_slope=0.1)
 
 				self.moduleOne = torch.nn.Sequential(
 					torch.nn.Conv2d(in_channels=intCurrent, out_channels=128, kernel_size=3, stride=1, padding=1),
@@ -200,7 +193,7 @@ class Network(torch.nn.Module):
 					tensorFlow = None
 					tensorFeat = None
 
-					tensorVolume = self.moduleCorreleaky(self.moduleCorrelation(tensorFirst, tensorSecond))
+					tensorVolume = torch.nn.functional.leaky_relu(input=correlation.FunctionCorrelation(tensorFirst=tensorFirst, tensorSecond=tensorSecond), negative_slope=0.1, inplace=False)
 
 					tensorFeat = torch.cat([ tensorVolume ], 1)
 
@@ -208,7 +201,7 @@ class Network(torch.nn.Module):
 					tensorFlow = self.moduleUpflow(objectPrevious['tensorFlow'])
 					tensorFeat = self.moduleUpfeat(objectPrevious['tensorFeat'])
 
-					tensorVolume = self.moduleCorreleaky(self.moduleCorrelation(tensorFirst, self.moduleBackward(tensorSecond, tensorFlow * self.dblBackward)))
+					tensorVolume = torch.nn.functional.leaky_relu(input=correlation.FunctionCorrelation(tensorFirst=tensorFirst, tensorSecond=Backward(tensorInput=tensorSecond, tensorFlow=tensorFlow * self.dblBackward)), negative_slope=0.1, inplace=False)
 
 					tensorFeat = torch.cat([ tensorVolume, tensorFirst, tensorFlow, tensorFeat ], 1)
 
