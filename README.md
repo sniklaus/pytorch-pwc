@@ -1,13 +1,15 @@
 # pytorch-pwc
-This is a personal reimplementation of PWC-Net [1] using PyTorch. Should you be making use of this work, please cite the paper accordingly. Also, make sure to adhere to the <a href="https://github.com/NVlabs/PWC-Net#license">licensing terms</a> of the authors. Should you be making use of this particular implementation, please acknowledge it appropriately.
+This is a personal reimplementation of PWC-Net [1] using PyTorch. Should you be making use of this work, please cite the paper accordingly. Also, make sure to adhere to the <a href="https://github.com/NVlabs/PWC-Net#license">licensing terms</a> of the authors. Should you be making use of this particular implementation, please acknowledge it appropriately [2].
 
 <a href="https://arxiv.org/abs/1709.02371" rel="Paper"><img src="http://www.arxiv-sanity.com/static/thumbs/1709.02371v1.pdf.jpg" alt="Paper" width="100%"></a>
 
 For the original version of this work, please see: https://github.com/NVlabs/PWC-Net
 <br />
-Another optical flow implementation from me: https://github.com/sniklaus/pytorch-unflow
+Another optical flow implementation from me: https://github.com/sniklaus/pytorch-liteflownet
 <br />
-And another optical flow implementation from me: https://github.com/sniklaus/pytorch-spynet
+And another optical flow implementation from me: https://github.com/sniklaus/pytorch-unflow
+<br />
+Yet another optical flow implementation from me: https://github.com/sniklaus/pytorch-spynet
 
 ## background
 The authors of PWC-Net are thankfully already providing a reference implementation in PyTorch. However, its initial version did not reach the performance of the original Caffe version. This is why I created this repositroy, in which I replicated the performance of the official Caffe version by utilizing its weights.
@@ -42,4 +44,11 @@ As stated in the <a href="https://github.com/NVlabs/PWC-Net#license">licensing t
          booktitle = {IEEE Conference on Computer Vision and Pattern Recognition},
          year = {2018}
      }
+
+[2]  @misc{pytorch-pwc,
+         author = {Simon Niklaus},
+         title = {A Reimplementation of {PWC-Net} Using {PyTorch}},
+         year = {2018},
+         howpublished = {\url{https://github.com/sniklaus/pytorch-pwc}}
+    }
 ```

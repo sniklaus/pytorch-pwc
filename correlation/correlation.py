@@ -54,7 +54,7 @@ kernel_Correlation_updateOutput = '''
 	  // Load 3D patch into shared shared memory
 	  for (int j = 0; j < 1; j++) { // HEIGHT
 	    for (int i = 0; i < 1; i++) { // WIDTH
-	      int ji_off = ((j * 1) + i) * SIZE_3(rbot0);
+	      int ji_off = (j + i) * SIZE_3(rbot0);
 	      for (int ch = ch_off; ch < SIZE_3(rbot0); ch += 32) { // CHANNELS
 	        int idx1 = ((item * SIZE_1(rbot0) + y1+j) * SIZE_2(rbot0) + x1+i) * SIZE_3(rbot0) + ch;
 	        int idxPatchData = ji_off + ch;
@@ -76,7 +76,7 @@ kernel_Correlation_updateOutput = '''
 	    
 	    for (int j = 0; j < 1; j++) { // HEIGHT
 	      for (int i = 0; i < 1; i++) { // WIDTH
-	        int ji_off = ((j * 1) + i) * SIZE_3(rbot0);
+	        int ji_off = (j + i) * SIZE_3(rbot0);
 	        for (int ch = ch_off; ch < SIZE_3(rbot0); ch += 32) { // CHANNELS
 	          int x2 = x1 + s2o;
 	          int y2 = y1 + s2p;
@@ -280,13 +280,13 @@ def cupy_launch(strFunction, strKernel):
 class _FunctionCorrelation(torch.autograd.Function):
 	@staticmethod
 	def forward(self, first, second):
-		self.save_for_backward(first, second)
+		rbot0 = first.new_zeros([ first.size(0), first.size(2) + 8, first.size(3) + 8, first.size(1) ])
+		rbot1 = first.new_zeros([ first.size(0), first.size(2) + 8, first.size(3) + 8, first.size(1) ])
+
+		self.save_for_backward(first, second, rbot0, rbot1)
 
 		assert(first.is_contiguous() == True)
 		assert(second.is_contiguous() == True)
-
-		self.rbot0 = first.new_zeros([ first.size(0), first.size(2) + 8, first.size(3) + 8, first.size(1) ])
-		self.rbot1 = first.new_zeros([ first.size(0), first.size(2) + 8, first.size(3) + 8, first.size(1) ])
 
 		output = first.new_zeros([ first.size(0), 81, first.size(2), first.size(3) ])
 
@@ -294,35 +294,35 @@ class _FunctionCorrelation(torch.autograd.Function):
 			n = first.size(2) * first.size(3)
 			cupy_launch('kernel_Correlation_rearrange', cupy_kernel('kernel_Correlation_rearrange', {
 				'input': first,
-				'output': self.rbot0
+				'output': rbot0
 			}))(
 				grid=tuple([ int((n + 16 - 1) / 16), first.size(1), first.size(0) ]),
 				block=tuple([ 16, 1, 1 ]),
-				args=[ n, first.data_ptr(), self.rbot0.data_ptr() ],
+				args=[ n, first.data_ptr(), rbot0.data_ptr() ],
 				stream=Stream
 			)
 
 			n = second.size(2) * second.size(3)
 			cupy_launch('kernel_Correlation_rearrange', cupy_kernel('kernel_Correlation_rearrange', {
 				'input': second,
-				'output': self.rbot1
+				'output': rbot1
 			}))(
 				grid=tuple([ int((n + 16 - 1) / 16), second.size(1), second.size(0) ]),
 				block=tuple([ 16, 1, 1 ]),
-				args=[ n, second.data_ptr(), self.rbot1.data_ptr() ],
+				args=[ n, second.data_ptr(), rbot1.data_ptr() ],
 				stream=Stream
 			)
 
 			n = output.size(1) * output.size(2) * output.size(3)
 			cupy_launch('kernel_Correlation_updateOutput', cupy_kernel('kernel_Correlation_updateOutput', {
-				'rbot0': self.rbot0,
-				'rbot1': self.rbot1,
+				'rbot0': rbot0,
+				'rbot1': rbot1,
 				'top': output
 			}))(
-				grid=tuple([ first.size(3), first.size(2), first.size(0) ]),
+				grid=tuple([ output.size(3), output.size(2), output.size(0) ]),
 				block=tuple([ 32, 1, 1 ]),
 				shared_mem=first.size(1) * 4,
-				args=[ n, self.rbot0.data_ptr(), self.rbot1.data_ptr(), output.data_ptr() ],
+				args=[ n, rbot0.data_ptr(), rbot1.data_ptr(), output.data_ptr() ],
 				stream=Stream
 			)
 
@@ -336,7 +336,7 @@ class _FunctionCorrelation(torch.autograd.Function):
 
 	@staticmethod
 	def backward(self, gradOutput):
-		first, second = self.saved_tensors
+		first, second, rbot0, rbot1 = self.saved_tensors
 
 		assert(gradOutput.is_contiguous() == True)
 
@@ -348,15 +348,15 @@ class _FunctionCorrelation(torch.autograd.Function):
 				for intSample in range(first.size(0)):
 					n = first.size(1) * first.size(2) * first.size(3)
 					cupy_launch('kernel_Correlation_updateGradFirst', cupy_kernel('kernel_Correlation_updateGradFirst', {
-						'rbot0': self.rbot0,
-						'rbot1': self.rbot1,
+						'rbot0': rbot0,
+						'rbot1': rbot1,
 						'gradOutput': gradOutput,
 						'gradFirst': gradFirst,
 						'gradSecond': None
 					}))(
 						grid=tuple([ int((n + 512 - 1) / 512), 1, 1 ]),
 						block=tuple([ 512, 1, 1 ]),
-						args=[ n, intSample, self.rbot0.data_ptr(), self.rbot1.data_ptr(), gradOutput.data_ptr(), gradFirst.data_ptr(), None ],
+						args=[ n, intSample, rbot0.data_ptr(), rbot1.data_ptr(), gradOutput.data_ptr(), gradFirst.data_ptr(), None ],
 						stream=Stream
 					)
 				# end
@@ -366,15 +366,15 @@ class _FunctionCorrelation(torch.autograd.Function):
 				for intSample in range(first.size(0)):
 					n = first.size(1) * first.size(2) * first.size(3)
 					cupy_launch('kernel_Correlation_updateGradSecond', cupy_kernel('kernel_Correlation_updateGradSecond', {
-						'rbot0': self.rbot0,
-						'rbot1': self.rbot1,
+						'rbot0': rbot0,
+						'rbot1': rbot1,
 						'gradOutput': gradOutput,
 						'gradFirst': None,
 						'gradSecond': gradSecond
 					}))(
 						grid=tuple([ int((n + 512 - 1) / 512), 1, 1 ]),
 						block=tuple([ 512, 1, 1 ]),
-						args=[ n, intSample, self.rbot0.data_ptr(), self.rbot1.data_ptr(), gradOutput.data_ptr(), None, gradSecond.data_ptr() ],
+						args=[ n, intSample, rbot0.data_ptr(), rbot1.data_ptr(), gradOutput.data_ptr(), None, gradSecond.data_ptr() ],
 						stream=Stream
 					)
 				# end
