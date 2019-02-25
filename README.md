@@ -44,7 +44,9 @@ As stated in the <a href="https://github.com/NVlabs/PWC-Net#license">licensing t
          booktitle = {IEEE Conference on Computer Vision and Pattern Recognition},
          year = {2018}
      }
+```
 
+```
 [2]  @misc{pytorch-pwc,
          author = {Simon Niklaus},
          title = {A Reimplementation of {PWC-Net} Using {PyTorch}},
