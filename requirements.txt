@@ -1,0 +1,4 @@
+cupy>=5.0.0
+numpy>=1.15.0
+Pillow>=5.0.0
+torch>=1.0.0
