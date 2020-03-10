@@ -11,7 +11,7 @@ import PIL.Image
 import sys
 
 try:
-	from correlation import correlation # the custom cost volume layer
+	from .correlation import correlation # the custom cost volume layer
 except:
 	sys.path.insert(0, './correlation'); import correlation # you should consider upgrading python
 # end
@@ -40,25 +40,25 @@ for strOption, strArgument in getopt.getopt(sys.argv[1:], '', [ strParameter[2:]
 
 ##########################################################
 
-Backward_tensorGrid = {}
-Backward_tensorPartial = {}
+backwarp_tensorGrid = {}
+backwarp_tensorPartial = {}
 
-def Backward(tensorInput, tensorFlow):
-	if str(tensorFlow.size()) not in Backward_tensorGrid:
-		tensorHorizontal = torch.linspace(-1.0, 1.0, tensorFlow.size(3)).view(1, 1, 1, tensorFlow.size(3)).expand(tensorFlow.size(0), -1, tensorFlow.size(2), -1)
-		tensorVertical = torch.linspace(-1.0, 1.0, tensorFlow.size(2)).view(1, 1, tensorFlow.size(2), 1).expand(tensorFlow.size(0), -1, -1, tensorFlow.size(3))
+def backwarp(tensorInput, tensorFlow):
+	if str(tensorFlow.size()) not in backwarp_tensorGrid:
+		tensorHorizontal = torch.linspace(-1.0, 1.0, tensorFlow.shape[3]).view(1, 1, 1, tensorFlow.shape[3]).expand(tensorFlow.shape[0], -1, tensorFlow.shape[2], -1)
+		tensorVertical = torch.linspace(-1.0, 1.0, tensorFlow.shape[2]).view(1, 1, tensorFlow.shape[2], 1).expand(tensorFlow.shape[0], -1, -1, tensorFlow.shape[3])
 
-		Backward_tensorGrid[str(tensorFlow.size())] = torch.cat([ tensorHorizontal, tensorVertical ], 1).cuda()
+		backwarp_tensorGrid[str(tensorFlow.size())] = torch.cat([ tensorHorizontal, tensorVertical ], 1).cuda()
 	# end
 
-	if str(tensorFlow.size()) not in Backward_tensorPartial:
-		Backward_tensorPartial[str(tensorFlow.size())] = tensorFlow.new_ones([ tensorFlow.size(0), 1, tensorFlow.size(2), tensorFlow.size(3) ])
+	if str(tensorFlow.size()) not in backwarp_tensorPartial:
+		backwarp_tensorPartial[str(tensorFlow.size())] = tensorFlow.new_ones([ tensorFlow.shape[0], 1, tensorFlow.shape[2], tensorFlow.shape[3] ])
 	# end
 
-	tensorFlow = torch.cat([ tensorFlow[:, 0:1, :, :] / ((tensorInput.size(3) - 1.0) / 2.0), tensorFlow[:, 1:2, :, :] / ((tensorInput.size(2) - 1.0) / 2.0) ], 1)
-	tensorInput = torch.cat([ tensorInput, Backward_tensorPartial[str(tensorFlow.size())] ], 1)
+	tensorFlow = torch.cat([ tensorFlow[:, 0:1, :, :] / ((tensorInput.shape[3] - 1.0) / 2.0), tensorFlow[:, 1:2, :, :] / ((tensorInput.shape[2] - 1.0) / 2.0) ], 1)
+	tensorInput = torch.cat([ tensorInput, backwarp_tensorPartial[str(tensorFlow.size())] ], 1)
 
-	tensorOutput = torch.nn.functional.grid_sample(input=tensorInput, grid=(Backward_tensorGrid[str(tensorFlow.size())] + tensorFlow).permute(0, 2, 3, 1), mode='bilinear', padding_mode='zeros', align_corners=True)
+	tensorOutput = torch.nn.functional.grid_sample(input=tensorInput, grid=(backwarp_tensorGrid[str(tensorFlow.size())] + tensorFlow).permute(0, 2, 3, 1), mode='bilinear', padding_mode='zeros', align_corners=True)
 
 	tensorMask = tensorOutput[:, -1:, :, :]; tensorMask[tensorMask > 0.999] = 1.0; tensorMask[tensorMask < 1.0] = 0.0
 
@@ -151,7 +151,7 @@ class Network(torch.nn.Module):
 
 				if intLevel < 6: self.moduleUpflow = torch.nn.ConvTranspose2d(in_channels=2, out_channels=2, kernel_size=4, stride=2, padding=1)
 				if intLevel < 6: self.moduleUpfeat = torch.nn.ConvTranspose2d(in_channels=intPrevious + 128 + 128 + 96 + 64 + 32, out_channels=2, kernel_size=4, stride=2, padding=1)
-				if intLevel < 6: self.dblBackward = [ None, None, None, 5.0, 2.5, 1.25, 0.625, None ][intLevel + 1]
+				if intLevel < 6: self.dblBackwarp = [ None, None, None, 5.0, 2.5, 1.25, 0.625, None ][intLevel + 1]
 
 				self.moduleOne = torch.nn.Sequential(
 					torch.nn.Conv2d(in_channels=intCurrent, out_channels=128, kernel_size=3, stride=1, padding=1),
@@ -199,7 +199,7 @@ class Network(torch.nn.Module):
 					tensorFlow = self.moduleUpflow(objectPrevious['tensorFlow'])
 					tensorFeat = self.moduleUpfeat(objectPrevious['tensorFeat'])
 
-					tensorVolume = torch.nn.functional.leaky_relu(input=correlation.FunctionCorrelation(tensorFirst=tensorFirst, tensorSecond=Backward(tensorInput=tensorSecond, tensorFlow=tensorFlow * self.dblBackward)), negative_slope=0.1, inplace=False)
+					tensorVolume = torch.nn.functional.leaky_relu(input=correlation.FunctionCorrelation(tensorFirst=tensorFirst, tensorSecond=backwarp(tensorInput=tensorSecond, tensorFlow=tensorFlow * self.dblBackwarp)), negative_slope=0.1, inplace=False)
 
 					tensorFeat = torch.cat([ tensorVolume, tensorFirst, tensorFlow, tensorFeat ], 1)
 
@@ -256,7 +256,7 @@ class Network(torch.nn.Module):
 
 		self.moduleRefiner = Refiner()
 
-		self.load_state_dict(torch.load('./network-' + arguments_strModel + '.pytorch'))
+		self.load_state_dict(torch.load(__file__.replace('run.py', 'network-' + arguments_strModel + '.pytorch')))
 	# end
 
 	def forward(self, tensorFirst, tensorSecond):
@@ -273,16 +273,22 @@ class Network(torch.nn.Module):
 	# end
 # end
 
-moduleNetwork = Network().cuda().eval()
+moduleNetwork = None
 
 ##########################################################
 
 def estimate(tensorFirst, tensorSecond):
-	assert(tensorFirst.size(1) == tensorSecond.size(1))
-	assert(tensorFirst.size(2) == tensorSecond.size(2))
+	global moduleNetwork
 
-	intWidth = tensorFirst.size(2)
-	intHeight = tensorFirst.size(1)
+	if moduleNetwork is None:
+		moduleNetwork = Network().cuda().eval()
+	# end
+
+	assert(tensorFirst.shape[1] == tensorSecond.shape[1])
+	assert(tensorFirst.shape[2] == tensorSecond.shape[2])
+
+	intWidth = tensorFirst.shape[2]
+	intHeight = tensorFirst.shape[1]
 
 	assert(intWidth == 1024) # remember that there is no guarantee for correctness, comment this line out if you acknowledge this and want to continue
 	assert(intHeight == 436) # remember that there is no guarantee for correctness, comment this line out if you acknowledge this and want to continue
@@ -315,7 +321,7 @@ if __name__ == '__main__':
 	objectOutput = open(arguments_strOut, 'wb')
 
 	numpy.array([ 80, 73, 69, 72 ], numpy.uint8).tofile(objectOutput)
-	numpy.array([ tensorOutput.size(2), tensorOutput.size(1) ], numpy.int32).tofile(objectOutput)
+	numpy.array([ tensorOutput.shape[2], tensorOutput.shape[1] ], numpy.int32).tofile(objectOutput)
 	numpy.array(tensorOutput.numpy().transpose(1, 2, 0), numpy.float32).tofile(objectOutput)
 
 	objectOutput.close()
