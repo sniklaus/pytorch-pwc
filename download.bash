@@ -1,4 +1,4 @@
 #!/bin/bash
 
-wget --timestamping http://content.sniklaus.com/github/pytorch-pwc/network-chairs-things.pytorch
-wget --timestamping http://content.sniklaus.com/github/pytorch-pwc/network-default.pytorch
+wget --verbose --continue --timestamping http://content.sniklaus.com/github/pytorch-pwc/network-chairs-things.pytorch
+wget --verbose --continue --timestamping http://content.sniklaus.com/github/pytorch-pwc/network-default.pytorch
