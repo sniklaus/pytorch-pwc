@@ -5,11 +5,7 @@ This is a personal reimplementation of PWC-Net [1] using PyTorch. Should you be 
 
 For the original version of this work, please see: https://github.com/NVlabs/PWC-Net
 <br />
-Another optical flow implementation from me: https://github.com/sniklaus/pytorch-liteflownet
-<br />
-And another optical flow implementation from me: https://github.com/sniklaus/pytorch-unflow
-<br />
-Yet another optical flow implementation from me: https://github.com/sniklaus/pytorch-spynet
+Other optical flow implementations from me: [pytorch-unflow](https://github.com/sniklaus/pytorch-unflow), [pytorch-spynet](https://github.com/sniklaus/pytorch-spynet), [pytorch-liteflownet](https://github.com/sniklaus/pytorch-liteflownet)
 
 ## background
 The authors of PWC-Net are thankfully already providing a reference implementation in PyTorch. However, its initial version did not reach the performance of the original Caffe version. This is why I created this repositroy, in which I replicated the performance of the official Caffe version by utilizing its weights.
