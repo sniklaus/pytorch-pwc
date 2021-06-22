@@ -296,7 +296,7 @@ class _FunctionCorrelation(torch.autograd.Function):
 			}))(
 				grid=tuple([ int((n + 16 - 1) / 16), first.shape[1], first.shape[0] ]),
 				block=tuple([ 16, 1, 1 ]),
-				args=[ n, first.data_ptr(), rbot0.data_ptr() ]
+				args=[ cupy.int32(n), first.data_ptr(), rbot0.data_ptr() ]
 			)
 
 			n = second.shape[2] * second.shape[3]
@@ -306,7 +306,7 @@ class _FunctionCorrelation(torch.autograd.Function):
 			}))(
 				grid=tuple([ int((n + 16 - 1) / 16), second.shape[1], second.shape[0] ]),
 				block=tuple([ 16, 1, 1 ]),
-				args=[ n, second.data_ptr(), rbot1.data_ptr() ]
+				args=[ cupy.int32(n), second.data_ptr(), rbot1.data_ptr() ]
 			)
 
 			n = output.shape[1] * output.shape[2] * output.shape[3]
@@ -318,7 +318,7 @@ class _FunctionCorrelation(torch.autograd.Function):
 				grid=tuple([ output.shape[3], output.shape[2], output.shape[0] ]),
 				block=tuple([ 32, 1, 1 ]),
 				shared_mem=first.shape[1] * 4,
-				args=[ n, rbot0.data_ptr(), rbot1.data_ptr(), output.data_ptr() ]
+				args=[ cupy.int32(n), rbot0.data_ptr(), rbot1.data_ptr(), output.data_ptr() ]
 			)
 
 		elif first.is_cuda == False:
@@ -351,7 +351,7 @@ class _FunctionCorrelation(torch.autograd.Function):
 					}))(
 						grid=tuple([ int((n + 512 - 1) / 512), 1, 1 ]),
 						block=tuple([ 512, 1, 1 ]),
-						args=[ n, intSample, rbot0.data_ptr(), rbot1.data_ptr(), gradOutput.data_ptr(), gradFirst.data_ptr(), None ]
+						args=[ cupy.int32(n), intSample, rbot0.data_ptr(), rbot1.data_ptr(), gradOutput.data_ptr(), gradFirst.data_ptr(), None ]
 					)
 				# end
 			# end
@@ -368,7 +368,7 @@ class _FunctionCorrelation(torch.autograd.Function):
 					}))(
 						grid=tuple([ int((n + 512 - 1) / 512), 1, 1 ]),
 						block=tuple([ 512, 1, 1 ]),
-						args=[ n, intSample, rbot0.data_ptr(), rbot1.data_ptr(), gradOutput.data_ptr(), None, gradSecond.data_ptr() ]
+						args=[ cupy.int32(n), intSample, rbot0.data_ptr(), rbot1.data_ptr(), gradOutput.data_ptr(), None, gradSecond.data_ptr() ]
 					)
 				# end
 			# end
