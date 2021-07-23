@@ -102,21 +102,21 @@ kernel_Correlation_updateOutput = '''
 	}
 '''
 
-kernel_Correlation_updateGradFirst = '''
+kernel_Correlation_updateGradOne = '''
 	#define ROUND_OFF 50000
 
-	extern "C" __global__ void kernel_Correlation_updateGradFirst(
+	extern "C" __global__ void kernel_Correlation_updateGradOne(
 	  const int n,
 	  const int intSample,
 	  const float* rbot0,
 	  const float* rbot1,
 	  const float* gradOutput,
-	  float* gradFirst,
-	  float* gradSecond
+	  float* gradOne,
+	  float* gradTwo
 	) { for (int intIndex = (blockIdx.x * blockDim.x) + threadIdx.x; intIndex < n; intIndex += blockDim.x * gridDim.x) {
-	  int n = intIndex % SIZE_1(gradFirst); // channels
-	  int l = (intIndex / SIZE_1(gradFirst)) % SIZE_3(gradFirst) + 4; // w-pos
-	  int m = (intIndex / SIZE_1(gradFirst) / SIZE_3(gradFirst)) % SIZE_2(gradFirst) + 4; // h-pos
+	  int n = intIndex % SIZE_1(gradOne); // channels
+	  int l = (intIndex / SIZE_1(gradOne)) % SIZE_3(gradOne) + 4; // w-pos
+	  int m = (intIndex / SIZE_1(gradOne) / SIZE_3(gradOne)) % SIZE_2(gradOne) + 4; // h-pos
 	  
 	  // round_off is a trick to enable integer division with ceil, even for negative numbers
 	  // We use a large offset, for the inner part not to become negative.
@@ -160,27 +160,27 @@ kernel_Correlation_updateGradFirst = '''
 	      }
 	    }
 	  }
-	  const int sumelems = SIZE_1(gradFirst);
-	  const int bot0index = ((n * SIZE_2(gradFirst)) + (m-4)) * SIZE_3(gradFirst) + (l-4);
-	  gradFirst[bot0index + intSample*SIZE_1(gradFirst)*SIZE_2(gradFirst)*SIZE_3(gradFirst)] = sum / (float)sumelems;
+	  const int sumelems = SIZE_1(gradOne);
+	  const int bot0index = ((n * SIZE_2(gradOne)) + (m-4)) * SIZE_3(gradOne) + (l-4);
+	  gradOne[bot0index + intSample*SIZE_1(gradOne)*SIZE_2(gradOne)*SIZE_3(gradOne)] = sum / (float)sumelems;
 	} }
 '''
 
-kernel_Correlation_updateGradSecond = '''
+kernel_Correlation_updateGradTwo = '''
 	#define ROUND_OFF 50000
 
-	extern "C" __global__ void kernel_Correlation_updateGradSecond(
+	extern "C" __global__ void kernel_Correlation_updateGradTwo(
 	  const int n,
 	  const int intSample,
 	  const float* rbot0,
 	  const float* rbot1,
 	  const float* gradOutput,
-	  float* gradFirst,
-	  float* gradSecond
+	  float* gradOne,
+	  float* gradTwo
 	) { for (int intIndex = (blockIdx.x * blockDim.x) + threadIdx.x; intIndex < n; intIndex += blockDim.x * gridDim.x) {
-	  int n = intIndex % SIZE_1(gradSecond); // channels
-	  int l = (intIndex / SIZE_1(gradSecond)) % SIZE_3(gradSecond) + 4; // w-pos
-	  int m = (intIndex / SIZE_1(gradSecond) / SIZE_3(gradSecond)) % SIZE_2(gradSecond) + 4; // h-pos
+	  int n = intIndex % SIZE_1(gradTwo); // channels
+	  int l = (intIndex / SIZE_1(gradTwo)) % SIZE_3(gradTwo) + 4; // w-pos
+	  int m = (intIndex / SIZE_1(gradTwo) / SIZE_3(gradTwo)) % SIZE_2(gradTwo) + 4; // h-pos
 	  
 	  // round_off is a trick to enable integer division with ceil, even for negative numbers
 	  // We use a large offset, for the inner part not to become negative.
@@ -226,9 +226,9 @@ kernel_Correlation_updateGradSecond = '''
 	      }
 	    }
 	  }
-	  const int sumelems = SIZE_1(gradSecond);
-	  const int bot1index = ((n * SIZE_2(gradSecond)) + (m-4)) * SIZE_3(gradSecond) + (l-4);
-	  gradSecond[bot1index + intSample*SIZE_1(gradSecond)*SIZE_2(gradSecond)*SIZE_3(gradSecond)] = sum / (float)sumelems;
+	  const int sumelems = SIZE_1(gradTwo);
+	  const int bot1index = ((n * SIZE_2(gradTwo)) + (m-4)) * SIZE_3(gradTwo) + (l-4);
+	  gradTwo[bot1index + intSample*SIZE_1(gradTwo)*SIZE_2(gradTwo)*SIZE_3(gradTwo)] = sum / (float)sumelems;
 	} }
 '''
 
@@ -277,36 +277,36 @@ def cupy_launch(strFunction, strKernel):
 
 class _FunctionCorrelation(torch.autograd.Function):
 	@staticmethod
-	def forward(self, first, second):
-		rbot0 = first.new_zeros([ first.shape[0], first.shape[2] + 8, first.shape[3] + 8, first.shape[1] ])
-		rbot1 = first.new_zeros([ first.shape[0], first.shape[2] + 8, first.shape[3] + 8, first.shape[1] ])
+	def forward(self, one, two):
+		rbot0 = one.new_zeros([ one.shape[0], one.shape[2] + 8, one.shape[3] + 8, one.shape[1] ])
+		rbot1 = one.new_zeros([ one.shape[0], one.shape[2] + 8, one.shape[3] + 8, one.shape[1] ])
 
-		self.save_for_backward(first, second, rbot0, rbot1)
+		self.save_for_backward(one, two, rbot0, rbot1)
 
-		first = first.contiguous(); assert(first.is_cuda == True)
-		second = second.contiguous(); assert(second.is_cuda == True)
+		one = one.contiguous(); assert(one.is_cuda == True)
+		two = two.contiguous(); assert(two.is_cuda == True)
 
-		output = first.new_zeros([ first.shape[0], 81, first.shape[2], first.shape[3] ])
+		output = one.new_zeros([ one.shape[0], 81, one.shape[2], one.shape[3] ])
 
-		if first.is_cuda == True:
-			n = first.shape[2] * first.shape[3]
+		if one.is_cuda == True:
+			n = one.shape[2] * one.shape[3]
 			cupy_launch('kernel_Correlation_rearrange', cupy_kernel('kernel_Correlation_rearrange', {
-				'input': first,
+				'input': one,
 				'output': rbot0
 			}))(
-				grid=tuple([ int((n + 16 - 1) / 16), first.shape[1], first.shape[0] ]),
+				grid=tuple([ int((n + 16 - 1) / 16), one.shape[1], one.shape[0] ]),
 				block=tuple([ 16, 1, 1 ]),
-				args=[ cupy.int32(n), first.data_ptr(), rbot0.data_ptr() ]
+				args=[ cupy.int32(n), one.data_ptr(), rbot0.data_ptr() ]
 			)
 
-			n = second.shape[2] * second.shape[3]
+			n = two.shape[2] * two.shape[3]
 			cupy_launch('kernel_Correlation_rearrange', cupy_kernel('kernel_Correlation_rearrange', {
-				'input': second,
+				'input': two,
 				'output': rbot1
 			}))(
-				grid=tuple([ int((n + 16 - 1) / 16), second.shape[1], second.shape[0] ]),
+				grid=tuple([ int((n + 16 - 1) / 16), two.shape[1], two.shape[0] ]),
 				block=tuple([ 16, 1, 1 ]),
-				args=[ cupy.int32(n), second.data_ptr(), rbot1.data_ptr() ]
+				args=[ cupy.int32(n), two.data_ptr(), rbot1.data_ptr() ]
 			)
 
 			n = output.shape[1] * output.shape[2] * output.shape[3]
@@ -317,11 +317,11 @@ class _FunctionCorrelation(torch.autograd.Function):
 			}))(
 				grid=tuple([ output.shape[3], output.shape[2], output.shape[0] ]),
 				block=tuple([ 32, 1, 1 ]),
-				shared_mem=first.shape[1] * 4,
+				shared_mem=one.shape[1] * 4,
 				args=[ cupy.int32(n), rbot0.data_ptr(), rbot1.data_ptr(), output.data_ptr() ]
 			)
 
-		elif first.is_cuda == False:
+		elif one.is_cuda == False:
 			raise NotImplementedError()
 
 		# end
@@ -331,67 +331,67 @@ class _FunctionCorrelation(torch.autograd.Function):
 
 	@staticmethod
 	def backward(self, gradOutput):
-		first, second, rbot0, rbot1 = self.saved_tensors
+		one, two, rbot0, rbot1 = self.saved_tensors
 
 		gradOutput = gradOutput.contiguous(); assert(gradOutput.is_cuda == True)
 
-		gradFirst = first.new_zeros([ first.shape[0], first.shape[1], first.shape[2], first.shape[3] ]) if self.needs_input_grad[0] == True else None
-		gradSecond = first.new_zeros([ first.shape[0], first.shape[1], first.shape[2], first.shape[3] ]) if self.needs_input_grad[1] == True else None
+		gradOne = one.new_zeros([ one.shape[0], one.shape[1], one.shape[2], one.shape[3] ]) if self.needs_input_grad[0] == True else None
+		gradTwo = one.new_zeros([ one.shape[0], one.shape[1], one.shape[2], one.shape[3] ]) if self.needs_input_grad[1] == True else None
 
-		if first.is_cuda == True:
-			if gradFirst is not None:
-				for intSample in range(first.shape[0]):
-					n = first.shape[1] * first.shape[2] * first.shape[3]
-					cupy_launch('kernel_Correlation_updateGradFirst', cupy_kernel('kernel_Correlation_updateGradFirst', {
+		if one.is_cuda == True:
+			if gradOne is not None:
+				for intSample in range(one.shape[0]):
+					n = one.shape[1] * one.shape[2] * one.shape[3]
+					cupy_launch('kernel_Correlation_updateGradOne', cupy_kernel('kernel_Correlation_updateGradOne', {
 						'rbot0': rbot0,
 						'rbot1': rbot1,
 						'gradOutput': gradOutput,
-						'gradFirst': gradFirst,
-						'gradSecond': None
+						'gradOne': gradOne,
+						'gradTwo': None
 					}))(
 						grid=tuple([ int((n + 512 - 1) / 512), 1, 1 ]),
 						block=tuple([ 512, 1, 1 ]),
-						args=[ cupy.int32(n), intSample, rbot0.data_ptr(), rbot1.data_ptr(), gradOutput.data_ptr(), gradFirst.data_ptr(), None ]
+						args=[ cupy.int32(n), intSample, rbot0.data_ptr(), rbot1.data_ptr(), gradOutput.data_ptr(), gradOne.data_ptr(), None ]
 					)
 				# end
 			# end
 
-			if gradSecond is not None:
-				for intSample in range(first.shape[0]):
-					n = first.shape[1] * first.shape[2] * first.shape[3]
-					cupy_launch('kernel_Correlation_updateGradSecond', cupy_kernel('kernel_Correlation_updateGradSecond', {
+			if gradTwo is not None:
+				for intSample in range(one.shape[0]):
+					n = one.shape[1] * one.shape[2] * one.shape[3]
+					cupy_launch('kernel_Correlation_updateGradTwo', cupy_kernel('kernel_Correlation_updateGradTwo', {
 						'rbot0': rbot0,
 						'rbot1': rbot1,
 						'gradOutput': gradOutput,
-						'gradFirst': None,
-						'gradSecond': gradSecond
+						'gradOne': None,
+						'gradTwo': gradTwo
 					}))(
 						grid=tuple([ int((n + 512 - 1) / 512), 1, 1 ]),
 						block=tuple([ 512, 1, 1 ]),
-						args=[ cupy.int32(n), intSample, rbot0.data_ptr(), rbot1.data_ptr(), gradOutput.data_ptr(), None, gradSecond.data_ptr() ]
+						args=[ cupy.int32(n), intSample, rbot0.data_ptr(), rbot1.data_ptr(), gradOutput.data_ptr(), None, gradTwo.data_ptr() ]
 					)
 				# end
 			# end
 
-		elif first.is_cuda == False:
+		elif one.is_cuda == False:
 			raise NotImplementedError()
 
 		# end
 
-		return gradFirst, gradSecond
+		return gradOne, gradTwo
 	# end
 # end
 
-def FunctionCorrelation(tenFirst, tenSecond):
-	return _FunctionCorrelation.apply(tenFirst, tenSecond)
+def FunctionCorrelation(tenOne, tenTwo):
+	return _FunctionCorrelation.apply(tenOne, tenTwo)
 # end
 
 class ModuleCorrelation(torch.nn.Module):
 	def __init__(self):
-		super(ModuleCorrelation, self).__init__()
+		super().__init__()
 	# end
 
-	def forward(self, tenFirst, tenSecond):
-		return _FunctionCorrelation.apply(tenFirst, tenSecond)
+	def forward(self, tenOne, tenTwo):
+		return _FunctionCorrelation.apply(tenOne, tenTwo)
 	# end
 # end
