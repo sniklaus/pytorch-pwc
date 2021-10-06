@@ -269,7 +269,7 @@ class Network(torch.nn.Module):
 		objEstimate = self.netThr(tenOne[-4], tenTwo[-4], objEstimate)
 		objEstimate = self.netTwo(tenOne[-5], tenTwo[-5], objEstimate)
 
-		return objEstimate['tenFlow'] + self.netRefiner(objEstimate['tenFeat'])
+		return (objEstimate['tenFlow'] + self.netRefiner(objEstimate['tenFeat'])) * 20.0
 	# end
 # end
 
@@ -302,7 +302,7 @@ def estimate(tenOne, tenTwo):
 	tenPreprocessedOne = torch.nn.functional.interpolate(input=tenPreprocessedOne, size=(intPreprocessedHeight, intPreprocessedWidth), mode='bilinear', align_corners=False)
 	tenPreprocessedTwo = torch.nn.functional.interpolate(input=tenPreprocessedTwo, size=(intPreprocessedHeight, intPreprocessedWidth), mode='bilinear', align_corners=False)
 
-	tenFlow = 20.0 * torch.nn.functional.interpolate(input=netNetwork(tenPreprocessedOne, tenPreprocessedTwo), size=(intHeight, intWidth), mode='bilinear', align_corners=False)
+	tenFlow = torch.nn.functional.interpolate(input=netNetwork(tenPreprocessedOne, tenPreprocessedTwo), size=(intHeight, intWidth), mode='bilinear', align_corners=False)
 
 	tenFlow[:, 0, :, :] *= float(intWidth) / float(intPreprocessedWidth)
 	tenFlow[:, 1, :, :] *= float(intHeight) / float(intPreprocessedHeight)
