@@ -246,8 +246,10 @@ def cupy_kernel(strFunction, objVariables):
 
 		strTensor = objMatch.group(4)
 		intSizes = objVariables[strTensor].size()
-
-		strKernel = strKernel.replace(objMatch.group(), str(intSizes[intArg]))
+		if torch.is_tensor(intSizes[intArg]):
+		    strKernel = strKernel.replace(objectMatch.group(), str(intSizes[intArg].detach().item()))
+		else:
+		    strKernel = strKernel.replace(objectMatch.group(), str(intSizes[intArg]))
 	# end
 
 	while True:
