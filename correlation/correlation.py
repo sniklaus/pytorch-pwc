@@ -381,7 +381,8 @@ class _FunctionCorrelation(torch.autograd.Function):
 # end
 
 def FunctionCorrelation(tenOne, tenTwo):
-    return _FunctionCorrelation.apply(tenOne, tenTwo)
+    with cupy.cuda.Device(tenOne.get_device()):
+        return _FunctionCorrelation.apply(tenOne, tenTwo)
 # end
 
 class ModuleCorrelation(torch.nn.Module):
