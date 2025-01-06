@@ -262,7 +262,7 @@ def cupy_kernel(strFunction, objVariables):
         intStrides = objVariables[strTensor].stride()
         strIndex = [ '((' + strArgs[intArg + 1].replace('{', '(').replace('}', ')').strip() + ')*' + str(intStrides[intArg] if torch.is_tensor(intStrides[intArg]) == False else intStrides[intArg].item()) + ')' for intArg in range(intArgs) ]
 
-        strKernel = strKernel.replace(objMatch.group(0), strTensor + '[' + str.join('+', strIndex) + ']')
+        strKernel = strKernel.replace(objMatch.group(0), strTensor + '[' + str('+').join(strIndex) + ']')
     # end
 
     return strKernel

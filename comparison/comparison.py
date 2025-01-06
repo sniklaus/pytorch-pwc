@@ -2,7 +2,6 @@
 
 import math
 import moviepy
-import moviepy.editor
 import numpy
 import PIL
 import PIL.Image
@@ -27,7 +26,7 @@ for objImage in objImages:
 
     for intU in [ intShift - 10 for intShift in range(20) ]:
         for intV in [ intShift - 10 for intShift in range(20) ]:
-            if math.sqrt(math.pow(intU, 2.0) + math.pow(intV, 2.0)) <= 5.0:
+            if math.sqrt(pow(intU, 2.0) + pow(intV, 2.0)) <= 5.0:
                 PIL.ImageDraw.Draw(objOutput).text((intX + intU, intY + intV), objImage['strText'], (255, 255, 255), PIL.ImageFont.truetype('freefont/FreeSerifBold.ttf', 32))
             # end
         # end
@@ -38,4 +37,4 @@ for objImage in objImages:
     npyImages.append(numpy.array(objOutput))
 # end
 
-moviepy.editor.ImageSequenceClip(sequence=npyImages, fps=1).write_gif(filename='comparison.gif', program='ImageMagick', opt='optimizeplus')
+moviepy.ImageSequenceClip(sequence=npyImages, fps=1).write_gif(filename='comparison.gif', program='ImageMagick', opt='optimizeplus')

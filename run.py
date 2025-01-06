@@ -282,7 +282,7 @@ def estimate(tenOne, tenTwo):
     global netNetwork
 
     if netNetwork is None:
-        netNetwork = Network().cuda().eval()
+        netNetwork = Network().cuda().train(False)
     # end
 
     assert(tenOne.shape[1] == tenTwo.shape[1])
@@ -323,7 +323,7 @@ if __name__ == '__main__':
 
     numpy.array([ 80, 73, 69, 72 ], numpy.uint8).tofile(objOutput)
     numpy.array([ tenOutput.shape[2], tenOutput.shape[1] ], numpy.int32).tofile(objOutput)
-    numpy.array(tenOutput.numpy().transpose(1, 2, 0), numpy.float32).tofile(objOutput)
+    numpy.array(tenOutput.numpy(force=True).transpose(1, 2, 0), numpy.float32).tofile(objOutput)
 
     objOutput.close()
 # end
